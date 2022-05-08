@@ -26,10 +26,12 @@ from pymongo import MongoClient
 
 djcelery.setup_loader()
 
-KOBO_SERVER = 'dyn-bahis-dev.mpower-social.com'
-WEB_SERVER = 'http://dyn-bahis-dev.mpower-social.com'
-FORM_BUILDER_SERVER = 'http://dyn-bahis-dev.mpower-social.com/form-renderer'
-KOBO_MODULE_URL = 'http://dyn-bahis-dev.mpower-social.com'
+KOBO_SERVER = os.environ.get('KOBO_SERVER_HOST')
+WEB_SERVER = os.environ.get('KOBO_SERVER_HOST')
+FORM_BUILDER_SERVER = os.environ.get('KOBO_BUILDER_HOST')
+WEB_SERVER = os.environ.get('KOBO_SERVER_HOST')
+KOBO_MODULE_URL = os.environ.get('KOBO_SERVER_HOST')
+
 
 
 
@@ -295,11 +297,11 @@ INSTALLED_APPS = (
 )
 
 MONGO_DATABASE = {
-    'HOST': '192.168.19.89',
+    'HOST': os.environ.get('MONGO_DB_HOST'),
     'PORT': 27017,
-    'NAME': 'coredbdada',
-    'USER': '',
-    'PASSWORD': ''
+    'NAME': os.environ.get('MONGO_DB_NAME'),
+    'USER': os.environ.get('MONGO_DB_USER'),
+    'PASSWORD': os.environ.get('MONGO_DB_PASSWORD')
 }
 
 
@@ -310,10 +312,10 @@ DATABASES = {
         'OPTIONS': {
             'options': '-c search_path=public,instance,core,custom'
         },
-        'NAME': 'coredbdada',
-        'USER': 'kobo',
-        'PASSWORD': 'DB@mPower@786',
-        'HOST': '192.168.19.89',
+        'NAME': os.environ.get('KOBO_PSQL_DB_NAME'),
+        'USER': os.environ.get('KOBO_PSQL_DB_USER'),
+        'PASSWORD': os.environ.get('KOBO_PSQL_DB_PASS'),
+        'HOST': os.environ.get('KOBO_PSQL_DB_HOST'),
         'PORT': '5432',
     }
 }
