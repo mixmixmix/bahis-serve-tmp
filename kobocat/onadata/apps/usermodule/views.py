@@ -1213,17 +1213,17 @@ def edit_profile(request,user_id):
 
     # Get Supervisor
     batch_id = None
-    try:
-        cursor = connection.cursor()
-        cursor.execute("select batch_id from user_batch_map where user_id = " + str(user_id) + " limit 1")
-        fetchVal = cursor.fetchone()
-        if fetchVal:
-            batch_id = fetchVal[0]
-    except Exception as ex:
-        batch_id = None
-    finally:
-        cursor.close()
-        # If it's a HTTP POST, we're interested in processing form data.
+    #try:
+    #    cursor = connection.cursor()
+    #    cursor.execute("select batch_id from user_batch_map where user_id = " + str(user_id) + " limit 1")
+    #    fetchVal = cursor.fetchone()
+    #    if fetchVal:
+    #        batch_id = fetchVal[0]
+    #except Exception as ex:
+    #    batch_id = None
+    #finally:
+    #    cursor.close()
+    # If it's a HTTP POST, we're interested in processing form data.
     if request.method == 'POST':
         # Attempt to grab information from the raw form information.
         # Note that we make use of both UserForm and UserProfileForm.
@@ -1279,27 +1279,27 @@ def edit_profile(request,user_id):
             UserRoleMap(user=user, role=roley).save()
 
             # If the selected role has parent then map  ##FOR MJIVITA
-            __db_commit_query("delete from user_supervisor_map where user_id = "+str(user.id))
-            if request.POST.get('supervisor'):
-                __db_commit_query(
-                    "INSERT INTO public.user_supervisor_map(id, user_id, supervisor_id)VALUES (DEFAULT, " + str(
-                        user_id) + "," + str(request.POST.get('supervisor')) + ")")
+            #__db_commit_query("delete from user_supervisor_map where user_id = "+str(user.id))
+            #if request.POST.get('supervisor'):
+            #    __db_commit_query(
+            #        "INSERT INTO public.user_supervisor_map(id, user_id, supervisor_id)VALUES (DEFAULT, " + str(
+            #            user_id) + "," + str(request.POST.get('supervisor')) + ")")
 
             # User batch :: APPlicable for only FD
-            if request.POST.get('batch'):
-                print "batch id is::::::::::::::::::::::;"+str(request.POST.get('batch'))
-                cursor = connection.cursor()
-                cursor.execute("select id from user_batch_map where user_id = "+str(user_id)+ " limit 1")
-                fetchVal = cursor.fetchone()
-                if fetchVal:
-                    __db_commit_query(
-                        "update user_batch_map set batch_id = " + str(request.POST.get('batch')) + "  where user_id = " + str(user_id))
-                else:
-                    __db_commit_query(
-                        "INSERT INTO public.user_batch_map(id, user_id, batch_id)VALUES (DEFAULT, " + str(
-                            user.id) + "," + str(request.POST.get('batch')) + ")")
+            #if request.POST.get('batch'):
+            #    print "batch id is::::::::::::::::::::::;"+str(request.POST.get('batch'))
+            #    cursor = connection.cursor()
+            #    cursor.execute("select id from user_batch_map where user_id = "+str(user_id)+ " limit 1")
+            #    fetchVal = cursor.fetchone()
+            #    if fetchVal:
+            #        __db_commit_query(
+            #            "update user_batch_map set batch_id = " + str(request.POST.get('batch')) + "  where user_id = " + str(user_id))
+            #    else:
+            #        __db_commit_query(
+            #            "INSERT INTO public.user_batch_map(id, user_id, batch_id)VALUES (DEFAULT, " + str(
+            #                user.id) + "," + str(request.POST.get('batch')) + ")")
 
-                cursor.close()
+            #    cursor.close()
 
 
 

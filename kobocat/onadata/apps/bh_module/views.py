@@ -164,7 +164,7 @@ def datasource_form_info():
     datasource_list = __db_fetch_values("select id, title from core.datasource_definition")
     table_list = __db_fetch_values("SELECT table_name,table_name as \"name\" FROM "
                                    "information_schema.tables WHERE table_type='BASE TABLE' "
-                                   "AND table_schema = 'core'")
+                                   "AND table_schema in ('core','custom')")
 
     data_info = {
         'datasource_choices': datasource_list,
@@ -506,11 +506,11 @@ def project_settings(request):
         project_publish = request.POST.get('project_publish')
         project_archive = request.POST.get('project_archive')
 
-        update_query = "update module_definition set status = %s," \
+        update_query = "update module_definition set updated_at=now(), status = %s," \
                        " \"publish_status\" = %s, archive=%s where id = %s" % (project_active,
                                                                                project_publish, project_archive,
                                                                                str(project_id))
-        database(update_query)
+        __db_commit_query(update_query)
 
     return HttpResponse('Sucess', status=200)
 
@@ -1299,6 +1299,7 @@ def add_list_workflow(request, list_id):
                 json.dumps(title), json.dumps(definition_list), xform_id, request.user.id, list_id, workflow_type,
                 details_pk)
     __db_commit_query(query)
+    __db_commit_query("""update core.list_definition set updated_at = now() where id = %s """ % list_id)
     messages.success(request, '<i class="fa fa-check-circle"></i> Module List settings updated!',
                      extra_tags='alert-success crop-both-side')
 
@@ -1360,7 +1361,7 @@ def save_lookup_info(request, list_id):
         final_col_def = [dict(lrcd['col_def']) for lrcd in list_rest_col_def]
         final_col_def.append(lookup_col_def)
         __db_commit_query("""
-        update core.list_definition set column_definition = '%s'::json where id = %s
+        update core.list_definition set column_definition = '%s'::json, updated_at = now() where id = %s
         """ % (json.dumps(final_col_def).replace("'", "''"), list_id))
         return HttpResponse(json.dumps({'success': True}))
     except Exception as ex:
@@ -1421,7 +1422,7 @@ def add_lookup_column(request, list_id):
 
     print lookup_dict
     col_def.append(lookup_dict)
-    query = """update core.list_definition set column_definition = '%s' where id = %s""" % (
+    query = """update core.list_definition set column_definition = '%s', updated_at = now() where id = %s""" % (
         json.dumps(col_def).replace("'", "''"), list_id)
     __db_commit_query(query)
     messages.success(request, '<i class="fa fa-check-circle"></i> Module List settings updated!',
@@ -1687,7 +1688,9 @@ def module_list_generate(request, list_id):
     print "Before Filter sorting"
     try:
         # sorting Filter accroding to order
-        filter_df = pandas.DataFrame(filter_def).sort_values(by=['order'], ascending=True)
+        filter_def = pandas.DataFrame(filter_def)
+        filter_def['order'] = filter_def['order'].astype(int)
+        filter_df = filter_def.sort_values(by=['order'], ascending=True)
 
         print filter_df
         filter_def = filter_df.to_dict('r')
@@ -2194,9 +2197,12 @@ def module_catchment_data_insert(request):
             query = "INSERT INTO module_catchment_area (module_id, geoid,created_at,created_by,updated_at,updated_by) VALUES(" + str(
                 module_id) + ", " + str(
                 each) + ",now()," + str(request.user.id) + ",now()," + str(request.user.id) + ")"
-            database(query)
+            __db_commit_query(query)
             # sql = 'refresh materialized view vwunion_mat; refresh materialized view vwbranchcoverage_mat;refresh materialized view vwbranchunioncoverage;'
             # database(sql)
+    __db_commit_query("""
+    update core.module_definition set updated_at = now() where id = %s
+    """ % module_id)
     return HttpResponseRedirect(redirect_url)
 
 
@@ -2207,7 +2213,7 @@ def delete_prev_module_catchment_record(module_id):
     :return: template
     """
     query = "update module_catchment_area set deleted_at =now() where module_id = " + str(module_id) + " "
-    database(query)
+    __db_commit_query(query)
 
 
 # -------------- MAster Data Category ----------------
@@ -2218,6 +2224,9 @@ def category_list(request):
     Args:
         request ([GET]):
     """
+    delete_success = -1
+    if request.GET.get('delete_success') is not None:
+        delete_success = request.GET.get('delete_success')
     query = """SELECT row_number() OVER (ORDER BY m.id DESC) as sl, m.id, m.category_name as category, m.parent_id , c.category_name as parent_category 
     FROM master_category m left join master_category c on m.parent_id = c.id where m.active is true order by m.created_date desc;"""
 
@@ -2225,7 +2234,8 @@ def category_list(request):
 
     template = loader.get_template('master_data/category_list.html')
     context = RequestContext(request, {
-        'category_list': category_dict
+        'category_list': category_dict,
+        'delete_success':delete_success
     })
 
     return HttpResponse(template.render(context))
@@ -2314,6 +2324,42 @@ def category_edit(request, category_id):
 
 
 @login_required
+@csrf_exempt
+def category_delete(request, category_id):
+    """This function will delete Category with related data
+
+    Args:
+        request ([GET/POST]):
+    """
+    try:
+        delete_item_q = """delete from core.master_category_item where category_id = %s""" % category_id
+        delete_cat_q = """delete from core.master_category where id = %s""" % category_id
+        __db_commit_query(delete_item_q)
+        __db_commit_query(delete_cat_q)
+        return HttpResponseRedirect('/bhmodule/master-data-category/list/?delete_success=1')
+    except Exception as ex:
+        print(str(ex))
+        return HttpResponseRedirect('/bhmodule/master-data-category/list/?delete_success=0')
+
+
+@login_required
+@csrf_exempt
+def category_item_delete(request, category_id, item_id):
+    """This function will delete Category item
+
+    Args:
+        request ([GET/POST]):
+    """
+    try:
+        delete_item_q = """delete from core.master_category_item where category_id = %s and id = %s""" % (category_id,item_id)
+        __db_commit_query(delete_item_q)
+        return HttpResponseRedirect('/bhmodule/master-data-category/view/'+str(category_id)+'/?delete_success=1')
+    except Exception as ex:
+        print(str(ex))
+        return HttpResponseRedirect('/bhmodule/master-data-category/view/'+str(category_id)+'/?delete_success=0')
+
+
+@login_required
 def category_item_list(request, category_id):
     """This function will render Catgory Item List template with data
 
@@ -2321,7 +2367,9 @@ def category_item_list(request, category_id):
         request ([GET]):
         category_id (str): category id of the item
     """
-
+    delete_success = -1
+    if request.GET.get('delete_success') is not None:
+        delete_success = request.GET.get('delete_success')
     category_name = utility_functions.__db_fetch_single_value(
         "select category_name from master_category where id = %s" % (category_id))
     query = """SELECT row_number() OVER (ORDER BY m.id DESC) as sl, m.id, m.name_eng, 
@@ -2337,6 +2385,7 @@ def category_item_list(request, category_id):
         'category_list': category_dict,
         'category_name': category_name,
         'category_id': category_id,
+        'delete_success':delete_success
     })
 
     return HttpResponse(template.render(context))

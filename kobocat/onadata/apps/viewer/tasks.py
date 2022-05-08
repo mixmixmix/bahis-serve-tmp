@@ -7,6 +7,7 @@ from django.db import transaction
 from django.conf import settings
 from django.core.mail import mail_admins
 from requests import ConnectionError
+import requests
 
 import string
 import openpyxl
@@ -370,8 +371,8 @@ def datasource_query_generate(data_source_id):
 '''
 
 def get_datasource_data_from_url(qry):
-    import requests
-    url = "http://192.168.19.16:8043/bhmodule/get/query-result/"
+    web_server = settings.WEB_SERVER
+    url = str(web_server)+"/bhmodule/get/query-result/"
     files=[
     ]
     headers = {}
@@ -404,7 +405,7 @@ def get_data(xform_id,id_string, show_label, qry_condition, export_id, username)
     form_id_string = form_data.iloc[0]['id_string']
     form_elements = form_def['children']
 
-    ws.title = form_id_string
+    ws.title = form_id_string[:30]
 
     rpt_table = []
     create_table_script(form_elements, form_id_string,repeat_table=rpt_table,repeat="")
@@ -709,7 +710,9 @@ def get_data(xform_id,id_string, show_label, qry_condition, export_id, username)
                         ms_row=1
                         ms_col=1
                         #ws_ms = wb.create_sheet("patient_registry_ms",1)
-                        ws_ms = wb.create_sheet(index= 0 ,title=table_name+"_ms")
+                        s_title = form_id_string + "_ms"
+                        s_title = s_title[:30]
+                        ws_ms = wb.create_sheet(index=0, title=s_title)
                         
                         ws_ms.cell(row=ms_row,column=ms_col).value="data_id"
                         ms_col +=1
@@ -758,7 +761,7 @@ def get_data(xform_id,id_string, show_label, qry_condition, export_id, username)
                     x_row +=1
                     wb.save(file_name)
 
-    Export.objects.filter(pk=export_id).update(filename=f_name, filedir=file_dir, internal_status=1)
+    Export.objects.filter(pk=export_id).update(filename=f_name, filedir=file_dir.replace('onadata/',''), internal_status=1)
                 
     print Export.objects.filter(pk=export_id)
 

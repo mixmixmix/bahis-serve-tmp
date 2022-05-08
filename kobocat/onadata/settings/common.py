@@ -295,9 +295,9 @@ INSTALLED_APPS = (
 )
 
 MONGO_DATABASE = {
-    'HOST': '127.0.0.1',
+    'HOST': '192.168.19.89',
     'PORT': 27017,
-    'NAME': 'coredb',
+    'NAME': 'coredbdada',
     'USER': '',
     'PASSWORD': ''
 }
@@ -308,12 +308,12 @@ DATABASES = {
     'default' : {
         'ENGINE': 'django.contrib.gis.db.backends.postgis',
         'OPTIONS': {
-            'options': '-c search_path=public,instance,core'
+            'options': '-c search_path=public,instance,core,custom'
         },
-        'NAME': 'coredb',
+        'NAME': 'coredbdada',
         'USER': 'kobo',
-        'PASSWORD': 'bahis@321',
-        'HOST': '127.0.0.1',
+        'PASSWORD': 'DB@mPower@786',
+        'HOST': '192.168.19.89',
         'PORT': '5432',
     }
 }
@@ -513,8 +513,8 @@ IMG_FILE_TYPE = 'jpg'
 
 # celery
 BROKER_BACKEND = "librabbitmq"
-BROKER_URL = 'amqp://guest:guest@localhost:5672/'
-#BROKER_URL = 'amqp://admin:admin@192.168.19.119:5672/dyn'
+#BROKER_URL = 'amqp://guest:guest@localhost:5672/'
+BROKER_URL = 'amqp://admin:admin@192.168.19.119:5672/dyn'
 CELERY_RESULT_BACKEND = "amqp"  # telling Celery to report results to RabbitMQ
 CELERY_ALWAYS_EAGER = False
 

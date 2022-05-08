@@ -172,7 +172,9 @@ def form_csv_config_list(request, xform_id):
 #--------------------------- API Related -------------------------
 
 
-def get_form_api(request, username, last_sync_time):
+# @api_view(['GET'])
+# @permission_classes((IsAuthenticated,))
+def get_form_api(request, username,last_sync_time):
     """
     this function will return script for system table
     :param Request:
@@ -201,8 +203,8 @@ def get_form_api(request, username, last_sync_time):
 
 
 
-
-
+# @api_view(['GET'])
+# @permission_classes((IsAuthenticated,))
 def get_module_api(request, username):
     """This function will render Published Module Data
 
@@ -213,7 +215,10 @@ def get_module_api(request, username):
     Returns:
         [json]: [Module configuration json tree]
     """
-
+    if request.GET.get('last_modified') is not None:
+        last_sync_time = request.GET.get('last_modified')
+    else:
+        last_sync_time = 0
     role_id = None
     branch_id = None
     user = User.objects.get(username = username)
@@ -280,21 +285,79 @@ def get_children_dict(module_dict, module_df, media_url, parent_catchment_df):
     return final_dict
 
 
+# @api_view(['GET'])
+# @permission_classes((IsAuthenticated,))
 def get_form_list_api(request, username):
     """
     this function will return form json
     :param Request:
     :return:
     """
+    if request.GET.get('last_modified') is not None:
+        last_sync_time = request.GET.get('last_modified')
+    else:
+        last_sync_time = 0
     user = User.objects.get(username = username)
     role_id = utility_functions.get_user_role(user.id)
-    form_query = """select id,id_string as name,json::json as form_definition, uuid as form_uuid 
-    from logger_xform where id = any (select xform_id::int from module_definition 
-    where module_type = '1' and id = any 
-    (SELECT  module_id FROM core.modulerolemap where role_id = %d 
-    and deleted_at is null) union 
-select xform_id::int from core.list_workflow where workflow_type='entry' and list_id = any(select list_def_id from core.module_definition where publish_status=1 and module_type = '2' and id = any(SELECT  module_id FROM core.modulerolemap where role_id = %d and deleted_at is null)))"""%(int(role_id),int(role_id))
-    print(form_query)
+    form_query = """select
+	lx.id,
+	lx.id_string as name,
+	lx.json::json as form_definition,
+	lx.uuid as form_uuid
+from
+	instance.logger_xform lx
+where
+	lx.id in (with tf as(with tmax as(with t1 as(
+	select
+		md.xform_id,(extract(epoch
+	from
+		coalesce(md.updated_at, md.created_at)::timestamp) * 1000)::bigint as updated_at
+	from
+		core.module_definition md
+	left join core.modulerolemap mrm on
+		mrm.module_id = md.id
+	where
+		md.module_type = '1'
+		and mrm.role_id = %d), t2 as(
+	select
+		lw.xform_id::int,(extract(epoch
+	from
+		coalesce(ld.updated_at, ld.created_at)::timestamp) * 1000)::bigint as updated_at
+	from
+		core.list_workflow lw
+	left join core.module_definition md on
+		md.list_def_id = lw.list_id
+	left join core.list_definition ld on
+		ld.id = lw.list_id
+	left join core.modulerolemap mrm on
+		mrm.module_id = md.id
+	where
+		lw.workflow_type = 'entry'
+		and md.publish_status = 1
+		and md.module_type = '2'
+		and mrm.role_id = %d)
+	select
+		*
+	from
+		t1
+union all
+	select
+		*
+	from
+		t2)
+	select
+		xform_id, max(updated_at) as updated_at
+	from
+		tmax
+	group by
+		xform_id)
+	select
+		xform_id
+	from
+		tf
+	where
+		updated_at > %d)"""%(int(role_id),int(role_id),int(last_sync_time))
+    # print(form_query)
     form_df = pandas.read_sql(form_query, connection)
     form_id_list = form_df['id'].tolist()
     form_id_string = ','.join(str(x) for x in form_id_list)
@@ -324,22 +387,79 @@ select xform_id::int from core.list_workflow where workflow_type='entry' and lis
     return response
 
 
+# @api_view(['GET'])
+# @permission_classes((IsAuthenticated,))
 def get_form_choices_api(request, username):
     """
     this function will return form json
     :param Request:
     :return:
     """
+    if request.GET.get('last_modified') is not None:
+        last_sync_time = request.GET.get('last_modified')
+    else:
+        last_sync_time = 0
     user = User.objects.get(username=username)
     role_id = utility_functions.get_user_role(user.id)
-    form_query = """select xform_id,field_name,value_label,value_text,field_type from "instance".xform_extracted xe where field_type in ('select one',
+    form_query = """with t as(select xform_id,field_name,value_label,value_text,field_type from "instance".xform_extracted xe where field_type in ('select one',
 'select all that apply') and xform_id in (select xform_id::int from core.module_definition 
     where module_type = '1' and id = any 
     (SELECT  module_id FROM core.modulerolemap where role_id = %d 
     and deleted_at is null) union 
-select xform_id::int from core.list_workflow where workflow_type='entry' and list_id = any(select list_def_id from core.module_definition where publish_status=1 and module_type = '2' and id = any(SELECT  module_id FROM core.modulerolemap where role_id = %d and deleted_at is null)))""" % (
-    int(role_id), int(role_id))
-    print(form_query)
+select xform_id::int from core.list_workflow where workflow_type='entry' and list_id = any(select list_def_id from core.module_definition where publish_status=1 and module_type = '2' and id = any(SELECT  module_id FROM core.modulerolemap where role_id = %d and deleted_at is null)))
+    )
+    select * from t where xform_id in (with tf as(with tmax as(with t1 as(
+	select
+		md.xform_id,(extract(epoch
+	from
+		coalesce(md.updated_at, md.created_at)::timestamp) * 1000)::bigint as updated_at
+	from
+		core.module_definition md
+	left join core.modulerolemap mrm on
+		mrm.module_id = md.id
+	where
+		md.module_type = '1'
+		and mrm.role_id = %d), t2 as(
+	select
+		lw.xform_id::int,(extract(epoch
+	from
+		coalesce(ld.updated_at, ld.created_at)::timestamp) * 1000)::bigint as updated_at
+	from
+		core.list_workflow lw
+	left join core.module_definition md on
+		md.list_def_id = lw.list_id
+	left join core.list_definition ld on
+		ld.id = lw.list_id
+	left join core.modulerolemap mrm on
+		mrm.module_id = md.id
+	where
+		lw.workflow_type = 'entry'
+		and md.publish_status = 1
+		and md.module_type = '2'
+		and mrm.role_id = %d)
+	select
+		*
+	from
+		t1
+union all
+	select
+		*
+	from
+		t2)
+	select
+		xform_id, max(updated_at) as updated_at
+	from
+		tmax
+	group by
+		xform_id)
+	select
+		xform_id
+	from
+		tf
+	where
+		updated_at > %d)""" % (
+    int(role_id), int(role_id), int(role_id),int(role_id), int(last_sync_time))
+    # print(form_query)
     form_df = pandas.read_sql(form_query, connection)
     # form_id_list = form_df['id'].tolist()
     # form_id_string = ','.join(str(x) for x in form_id_list)
@@ -368,6 +488,8 @@ select xform_id::int from core.list_workflow where workflow_type='entry' and lis
     return response
 
 
+# @api_view(['GET'])
+# @permission_classes((IsAuthenticated,))
 def get_list_def_api(request, username):
     """ This function renders List Def json as API
 
@@ -378,7 +500,25 @@ def get_list_def_api(request, username):
     Returns:
         [json]: [List Def Json]
     """
-    query = "select id, 'list_'||id::text as list_name, list_name::json as list_header,column_definition,filter_definition, datasource_type, datasource from list_definition where publish_status = 1"
+    if request.GET.get('last_modified') is not None:
+        last_sync_time = request.GET.get('last_modified')
+    else:
+        last_sync_time = 0
+    query = """
+    select
+        id,
+        'list_' || id::text as list_name,
+        list_name::json as list_header,
+        column_definition,
+        filter_definition,
+        datasource_type,
+        datasource
+    from
+        core.list_definition
+    where
+        publish_status = 1
+        and (extract(epoch from coalesce(updated_at,created_at)::timestamp) * 1000)::bigint > %d
+    """ % int(last_sync_time)
     list_df = pandas.read_sql(query, connection)
 
     id_list = list_df['id'].tolist()
@@ -388,10 +528,10 @@ def get_list_def_api(request, username):
     # print list_id_string
     workflow_query = "select title::json,list_id,workflow_definition,workflow_type,xform_id,id, details_pk from list_workflow where list_id=any(array[%s])" % (
         list_id_string)
-    print
-    workflow_query
+    # print
+    # workflow_query
     workflow_df = pandas.read_sql(workflow_query, connection)
-    print workflow_df
+    # print workflow_df
     list_df = list_df.fillna('')
     list_dict = list_df.to_dict('records')
     final_dict = []
@@ -401,7 +541,7 @@ def get_list_def_api(request, username):
             col_df = pandas.DataFrame(list_def['column_definition']).sort_values(by=['order'], ascending=True)
             col_df = col_df.where(pandas.notnull(col_df), None)
             list_def['column_definition'] = col_df.to_dict('r')
-            print list_def['column_definition']
+            # print list_def['column_definition']
 
 
         except Exception as ex:
@@ -598,8 +738,40 @@ def data_sync_paginated(request, username):
     Returns:
         [json]: [All instance data submitted after the sync time]
     """
+    geo_mapping = {
+        1: 'basic_info/division',
+        2: 'basic_info/district',
+        3: 'basic_info/upazila',
+        4: 'basic_info/union',
+        5: 'basic_info/mouza'
+    }
     last_modified = 'null'
     where_string = ' '
+
+    # user = User.objects.get(username=username)
+    # branch_id = utility_functions.get_user_branch(user.id)
+    # branch_catchment_df = utility_functions.get_branch_catchment(branch_id)
+    branch_catchment_df = pandas.read_sql("""
+    select geoid as value,gd.field_type_id as loc_type from core.branch_catchment_area bca 
+    left join core.geo_data gd on
+    gd.geocode::bigint = bca.geoid 
+    where bca.branch_id in (	
+	select branch_id from core.usermodule_userbranchmap where user_id = (select id from "instance".auth_user au where username = '%s'))
+	and deleted_at is null
+    """ % (username), connection)
+    if not branch_catchment_df.empty:
+        geo_filter_query = ' and ('
+        for idx, row in branch_catchment_df.iterrows():
+            if idx > 0:
+                geo_filter_query += " or " + "coalesce(json->>'" + geo_mapping[
+                    row['loc_type']] + "','-fuzx-') in ('" + str(
+                    row['value']) + "','-fuzx-')"
+            else:
+                geo_filter_query += "coalesce(json->>'" + geo_mapping[row['loc_type']] + "','-fuzx-') in ('" + str(
+                    row['value']) + "','-fuzx-')"
+        geo_filter_query += ') '
+    else:
+        geo_filter_query = ''
 
     if request.GET.get('last_modified') is not None:
         last_modified = request.GET.get('last_modified')
@@ -619,7 +791,7 @@ def data_sync_paginated(request, username):
     order_limit_str = " order by id asc limit %s offset %s * (%s - 1)" % (page_length, page_length, page_no)
 
     logger_query = """select id,xform_id, json, user_id, 
-    (extract(epoch from date_modified::timestamp) * 1000)::bigint as updated_at from logger_instance""" + where_string + order_limit_str
+    (extract(epoch from date_modified::timestamp) * 1000)::bigint as updated_at from logger_instance""" + where_string + geo_filter_query + order_limit_str
     print logger_query
     logger_df = pandas.read_sql(logger_query, connection)
     logger_df = logger_df.fillna('')
@@ -641,16 +813,46 @@ def data_sync_count(request, username):
     Returns:
         [json]: [All instance data submitted after the sync time]
     """
+    geo_mapping = {
+        1:'basic_info/division',
+        2:'basic_info/district',
+        3:'basic_info/upazila',
+        4:'basic_info/union',
+        5:'basic_info/mouza'
+    }
     last_modified = 'null'
     where_string = ' '
 
+    # user = User.objects.get(username=username)
+    # branch_id = utility_functions.get_user_branch(user.id)
+    # branch_catchment_df = utility_functions.get_branch_catchment(branch_id)
+    branch_catchment_df = pandas.read_sql("""
+        select geoid as value,gd.field_type_id as loc_type from core.branch_catchment_area bca 
+        left join core.geo_data gd on
+        gd.geocode::bigint = bca.geoid 
+        where bca.branch_id in (	
+    	select branch_id from core.usermodule_userbranchmap where user_id = (select id from "instance".auth_user au where username = '%s'))
+    	and deleted_at is null
+        """ % (username), connection)
+    if not branch_catchment_df.empty:
+        geo_filter_query = ' and ('
+        for idx,row in branch_catchment_df.iterrows():
+            if idx > 0:
+                geo_filter_query += " or " + "coalesce(json->>'" + geo_mapping[row['loc_type']] + "','-fuzx-') in ('" + str(
+                    row['value']) + "','-fuzx-')"
+            else:
+                geo_filter_query += "coalesce(json->>'" + geo_mapping[row['loc_type']] + "','-fuzx-') in ('" + str(
+                    row['value']) + "','-fuzx-')"
+        geo_filter_query += ')'
+    else:
+        geo_filter_query = ''
+
     if request.GET.get('last_modified') is not None:
         last_modified = request.GET.get('last_modified')
-        print
-        last_modified
+        print(last_modified)
         where_string = " where (extract(epoch from date_modified::timestamp) * 1000)::bigint>" + str(last_modified) + ""
 
-    logger_query = """select count(*) from logger_instance""" + where_string
+    logger_query = """select count(*) from logger_instance""" + where_string + geo_filter_query
     logger_df = pandas.read_sql(logger_query, connection)
     logger_df = logger_df.fillna('')
     logger_json = logger_df.to_json(orient='records')
@@ -798,38 +1000,38 @@ def catchment_area_api(request):
     return resp
 
 
-def master_data_sync(request, user_id):
-    data = []
-    query = """SELECT product_id, product_label, generic1, generic1_label, generic2, 
-    generic2_label, generic3, generic3_label, generic4, generic4_label FROM core.medicine; """
-
-    medicine_df = pandas.read_sql(query, connection)
-    total_query = ''
-    for index, row in medicine_df.iterrows():
-        total_query += """INSERT INTO core.medicine(product_id, product_label, generic1, generic1_label, 
-        generic2, generic2_label, generic3, generic3_label, generic4, generic4_label) 
-        VALUES(%d,%s', '%s' , '%s', '%s' , '%s', '%s', '%s', '%s', '%s');""" % (row['product_id'], row['product_label'],
-                                                                                row['generic1'], row['generic1_label'],
-                                                                                row['generic2'], row['generic2_label'],
-                                                                                row['generic3'],
-                                                                                row['generic3_label'], row['generic4'],
-                                                                                row['generic4_label'])
-    data.append({'script': total_query})
-
-    # field staff
-    query = """SELECT id, fullname, designation, mobile_number, node_id, trained, created_At::date FROM core.field_staffs;"""
-    staff_df = pandas.read_sql(query, connection)
-    total_query = ''
-    for index, row in staff_df.iterrows():
-        total_query += """INSERT INTO core.field_staffs(id, fullname, designation, mobile_number, node_id, trained, created_at) VALUES(%d, '%s', '%s', '%s', '%s', %d, '%s');""" % (
-        row['id'], row['fullname'],
-        row['designation'], row['mobile_number'], row['node_id'], row['trained'], row['created_at'])
-    data.append({'script': total_query})
-
-    print(data)
-    response = HttpResponse([data])
-    response["Access-Control-Allow-Origin"] = "*"
-    return response
+# def master_data_sync(request, user_id):
+#     data = []
+#     query = """SELECT product_id, product_label, generic1, generic1_label, generic2,
+#     generic2_label, generic3, generic3_label, generic4, generic4_label FROM core.medicine; """
+#
+#     medicine_df = pandas.read_sql(query, connection)
+#     total_query = ''
+#     for index, row in medicine_df.iterrows():
+#         total_query += """INSERT INTO core.medicine(product_id, product_label, generic1, generic1_label,
+#         generic2, generic2_label, generic3, generic3_label, generic4, generic4_label)
+#         VALUES(%d,%s', '%s' , '%s', '%s' , '%s', '%s', '%s', '%s', '%s');""" % (row['product_id'], row['product_label'],
+#                                                                                 row['generic1'], row['generic1_label'],
+#                                                                                 row['generic2'], row['generic2_label'],
+#                                                                                 row['generic3'],
+#                                                                                 row['generic3_label'], row['generic4'],
+#                                                                                 row['generic4_label'])
+#     data.append({'script': total_query})
+#
+#     # field staff
+#     query = """SELECT id, fullname, designation, mobile_number, node_id, trained, created_At::date FROM core.field_staffs;"""
+#     staff_df = pandas.read_sql(query, connection)
+#     total_query = ''
+#     for index, row in staff_df.iterrows():
+#         total_query += """INSERT INTO core.field_staffs(id, fullname, designation, mobile_number, node_id, trained, created_at) VALUES(%d, '%s', '%s', '%s', '%s', %d, '%s');""" % (
+#         row['id'], row['fullname'],
+#         row['designation'], row['mobile_number'], row['node_id'], row['trained'], row['created_at'])
+#     data.append({'script': total_query})
+#
+#     print(data)
+#     response = HttpResponse([data])
+#     response["Access-Control-Allow-Origin"] = "*"
+#     return response
 
 #------------------------ API Related -----------------------------
 

@@ -1,5 +1,5 @@
 import os
-from onadata.settings.common import * 
+from onadata.settings.common import *
 
 DEBUG = True
 TEMPLATE_DEBUG = DEBUG
@@ -69,3 +69,4 @@ SESSION_SERIALIZER='django.contrib.sessions.serializers.JSONSerializer'
 # print "KOBOFORM_SERVER=%s" % KOBOFORM_SERVER
 # print "SECRET_KEY=%s" % SECRET_KEY
 # print "CSRF_COOKIE_DOMAIN=%s " % CSRF_COOKIE_DOMAIN
+print("hello kobocat")

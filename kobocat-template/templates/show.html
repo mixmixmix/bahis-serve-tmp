@@ -11,13 +11,13 @@
 
   <!-- NEW SANDBOX HTML OUTSIDE THE CONTAINER -->
   {% if is_owner %}
-  <div class="sub-header-bar">
+  <!--<div class="sub-header-bar">
     <div class="container__wide">
       <a class="single-project__toggle-settings"><i class="fa fa-cog"></i> Project Settings</a>
       <div class="single-project__settings hidden">
         <div class="settings__left">
           <div class="settings__general">
-            <!-- <span title="Set here your general form settings" class="poshytip">?</span> -->
+            <span title="Set here your general form settings" class="poshytip">?</span>
             <h2 class="settings__group-label">
               {% trans "Form Settings" %}
             </h2>
@@ -67,7 +67,7 @@
               {% endif %}
             </div>
 
-          </div>  <!-- END .settings__general -->
+          </div>
 
           <div class="settings__delete-project">
             <h2 class="settings__group-label">
@@ -150,11 +150,11 @@
         </div>
       </div>
     </div>
-  </div>
+  </div>-->
   {% endif %}
 
   <!-- Project title and background docs -->
-  <header class="single-project__header">
+  <!--<header class="single-project__header">
       <hgroup class="container">
         {% if can_edit %}
           <form>
@@ -205,11 +205,11 @@
 
         </div>
       </hgroup>
-  </header>
+  </header>-->
 
   <!-- Delete form (in vex window) -->
   {% if is_owner %}
-  <div class="kc-hide">
+  <!--<div class="kc-hide">
     <div id="delete-form">
         <form action="{% url "onadata.apps.logger.views.delete_xform" username=user.username id_string=xform.id_string %}" method="post">
         {% csrf_token %}
@@ -225,7 +225,7 @@
             </div>
         </form>
     </div>
-  </div>
+  </div>-->
   {% endif %}
 
   <!-- END NEW SANDBOX HTML OUTSIDE THE CONTAINER -->
@@ -237,7 +237,7 @@
 
 <!-- NEW SINGLE PROJECT VIEW -->
     <div class="dashboard__left">
-      <div class="dashboard__submissions">
+      <!--<div class="dashboard__submissions">
         <h2 class="dashboard__group-label">
           Submissions ({{ xform.submission_count|intcomma }})
         </h2>
@@ -258,18 +258,18 @@
           <a href="{% url "onadata.apps.viewer.views.export_list" content_user.username xform.id_string 'xls' %}" class="download__drop-button">XLS</a>
           <a href="{% url "onadata.apps.viewer.views.export_list" content_user.username xform.id_string 'csv' %}" class="download__drop-button">CSV</a>
           <a href="{% url "onadata.apps.viewer.views.export_list" content_user.username xform.id_string 'zip' %}" class="download__drop-button">ZIP</a>
-          <!-- <a href="{% url "onadata.apps.viewer.views.export_list" content_user.username xform.id_string 'gdoc' %}" class="download__drop-button">GDOCS</a> -->
+          <a href="{% url "onadata.apps.viewer.views.export_list" content_user.username xform.id_string 'gdoc' %}" class="download__drop-button">GDOCS</a>
           <a href="{% url "onadata.apps.viewer.views.export_list" content_user.username xform.id_string 'kml'%}"  class="download__drop-button">KML</a>
           <a href="{% url "onadata.apps.viewer.views.export_list" content_user.username xform.id_string 'analyser' %}"  class="download__drop-button">Excel Analyser</a>
           <a href="{% url "formpack_export_menu" content_user.username xform.id_string %}"  class="download__drop-button">Advanced Downloads (beta)</a>
-          <!-- or: /<username>/exports/<id_string>/    onadata.apps.export.views._wrapper     formpack_export_menu -->
 
-          <!-- a href="{% url "onadata.apps.viewer.views.export_list" content_user.username xform.id_string 'sav_zip' %}" class="download__drop-button">SAV ZIP</a> -->
+
+          a href="{% url "onadata.apps.viewer.views.export_list" content_user.username xform.id_string 'sav_zip' %}" class="download__drop-button">SAV ZIP</a>
         </div>
-      </div>
+      </div>-->
 
       {# if images|length #}
-      <div class="dashboard__photos">
+      <!--<div class="dashboard__photos">
         <h2 class="dashboard__group-label">
           Photos
         </h2>
@@ -282,7 +282,7 @@
           <i class="fa fa-download"></i>
           <span>Download all photos</span>
         </a>
-      </div>
+      </div>-->
       {# endif #}
 
       <div class="dashboard__form">
@@ -303,14 +303,13 @@
           <div class="dashboard__form-drop hidden">
             <a href="{% url "download_xlsform" content_user.username xform.id_string %}" class="download__form-drop-button">XLS</a>
             <a href="{% url "download_xform" content_user.username xform.id_string %}" class="download__form-drop-button">XML</a>
-            <a href="{% url "download_spss_labels" content_user.username xform.id_string %}" class="download__form-drop-button">SPSS Labels</a>
           </div>
 
           {% if can_edit or xform.shared %}
           <!-- trigger preview vex window and the previewModalActivate function which loads the enketo iframe -->
-          <a title="{% trans 'Preview Form' %}" class="dashboard__formbutton dashboard__formbutton-preview">
+          <!--<a title="{% trans 'Preview Form' %}" class="dashboard__formbutton dashboard__formbutton-preview">
             <i class="fa fa-eye"></i><span>Preview</span>
-          </a>
+          </a>-->
           {% endif %}
 
           {% if can_edit or xform.shared %}
@@ -342,7 +341,7 @@
         </div>
       </div>
     </div>
-    <div class="dashboard__right">
+    <!--<div class="dashboard__right">
       {% if xform.has_instances_with_geopoints %}
       <div class="dashboard__gps">
         <h2 class="dashboard__group-label">GPS Points</h2>
@@ -410,7 +409,7 @@
       </div>
       {% endif %}
 
-    </div>
+    </div>-->
 
 <!-- END NEW SINGLE PROJECT VIEW -->
 

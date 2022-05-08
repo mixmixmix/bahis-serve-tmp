@@ -8,6 +8,15 @@
 
 
 {% block content %}
+    {% if delete_success == '1' %}
+        <div class="alert alert-success" role="alert">
+            Item Succcessfully deleted
+        </div>
+    {% elif delete_success == '0' %}
+        <div class="alert alert-danger" role="alert">
+            Item deletion failed
+        </div>
+    {% endif %}
 <div class="row">
     <div class="col-md-12">
         {% if can_conf == True %}
@@ -56,7 +65,7 @@
                               data-toggle="modal"
                         href="/bhmodule/master-data-category-item/edit/{{category_id}}/{{ each.id }}/" > <i class="fa fa-edit" style="font-size: 20px; margin-left: 5px" ></i></a>
                     <a class="tooltips delete-item" id = "delete-item" data-placement="top" onclick="deleteHref('{{ each.id }}')" 
-                    data-original-title="Delete" href="#" data-href="" data-toggle="modal" data-target="#confirm-delete"><i class="fa fa-2x fa-trash-o"></i></a>
+                    data-original-title="Delete" href="#" data-href="/bhmodule/master-data-category-item/delete/{{category_id}}/{{ each.id }}/" data-toggle="modal" data-target="#confirm-delete"><i class="fa fa-2x fa-trash-o"></i></a>
                         {% endif %}
                         </td>
 
