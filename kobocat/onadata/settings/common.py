@@ -405,6 +405,16 @@ if MONGO_DATABASE.get('USER') and MONGO_DATABASE.get('PASSWORD'):
 else:
     MONGO_CONNECTION_URL = "mongodb://%(HOST)s:%(PORT)s" % MONGO_DATABASE
 
+print("== === == ===== === = ===== = = == =  === ")
+print("== === == ===== === = ===== = = == =  === ")
+print("== === == ===== === = ===== = = == =  === ")
+print("Connecting to MONGO BONGO")
+print("== === == ===== === = ===== = = == =  === ")
+print("== === == ===== === = ===== = = == =  === ")
+print(MONGO_CONNECTION_URL)
+print("== === == ===== === = ===== = = == =  === ")
+print("== === == ===== === = ===== = = == =  === ")
+
 MONGO_CONNECTION = MongoClient(
     MONGO_CONNECTION_URL, safe=True, j=True, tz_aware=True)
 MONGO_DB = MONGO_CONNECTION[MONGO_DATABASE['NAME']]
